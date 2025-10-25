@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoteTab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar for notes management -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>Notes</h2>
+        <button class="btn-icon" id="newNoteBtn" title="New Note">+</button>
+      </div>
+      <div class="notes-list" id="notesList"></div>
+    </div>
+
+    <!-- Main editor area -->
+    <div class="main">
+      <button class="toggle-sidebar" id="toggleSidebar" title="Toggle Notes List">☰</button>
+
+      <div class="editor-container">
+        <input
+          type="text"
+          class="note-title"
+          id="noteTitle"
+          placeholder="Note title..."
+          spellcheck="false"
+        >
+        <textarea
+          class="editor"
+          id="editor"
+          placeholder="Start typing..."
+          spellcheck="true"
+        ></textarea>
+      </div>
+
+      <!-- Status bar -->
+      <div class="status-bar">
+        <div class="stats">
+          <span id="charCount">0 characters</span>
+          <span class="separator">•</span>
+          <span id="wordCount">0 words</span>
+        </div>
+        <div class="actions">
+          <span class="save-status" id="saveStatus">Saved</span>
+          <button class="btn-icon-action" id="exportBtn" title="Export note">
+            <img src="icons/download-square-solid.svg" alt="Export" class="icon">
+          </button>
+          <button class="btn-icon-action btn-danger" id="deleteBtn" title="Delete note">
+            <img src="icons/trash-solid.svg" alt="Delete" class="icon">
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
