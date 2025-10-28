@@ -9,16 +9,7 @@ NoteTab provides a distraction-free writing environment directly in your browser
 The extension includes a customizable theme system accessible from the toolbar icon. Choose between light mode, dark mode, or let the extension automatically match your system preferences. Theme changes apply instantly across all tabs and persist between browser sessions. The collapsible sidebar keeps your notes organized without cluttering the writing space.
 
 ## Installation
-
-To install NoteTab in Firefox:
-
-1. Download or clone this repository
-2. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
-3. Click "Load Temporary Add-on"
-4. Navigate to the project folder and select `manifest.json`
-5. Open a new tab to start using NoteTab
-
-Note: As a temporary add-on, NoteTab will remain installed until you restart Firefox. For permanent installation, you would need to package and sign the extension through Mozilla's add-on distribution system.
+OK Notetab 1.0.0 can be installed from https://addons.mozilla.org/en-US/firefox/addon/ok-notetab/
 
 ## Usage
 
