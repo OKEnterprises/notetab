@@ -1,6 +1,6 @@
 // First-party, cookieless pageview beacon for tabmargin.com.
 //
-// Posts the bare pathname to the TabMargin API, which derives a privacy-
+// Posts the bare pathname to the Tabmargin API, which derives a privacy-
 // preserving daily visitor hash (sha256 of salt+day+ip+user-agent) server-side.
 // No cookies, no localStorage, nothing that identifies the visitor is stored in
 // the browser. Uses a text/plain sendBeacon (a CORS-safelisted request) so there

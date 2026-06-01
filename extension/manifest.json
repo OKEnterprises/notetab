@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "TabMargin",
-  "version": "2.2.0",
+  "name": "Tabmargin",
+  "version": "2.3.0",
   "description": "Turn your new tab page into a minimalist notepad with persistent storage",
 
   "icons": {
@@ -14,7 +14,7 @@
       "48": "icons/notes.svg",
       "96": "icons/notes.svg"
     },
-    "default_title": "TabMargin Settings",
+    "default_title": "Tabmargin Settings",
     "default_popup": "popup.html"
   },
 

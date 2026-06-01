@@ -11,7 +11,7 @@ export function adminDashboardPage(scriptNonce: string, supabaseUrl: string, ano
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TabMargin — analytics</title>
+<title>Tabmargin — analytics</title>
 <style nonce="${scriptNonce}">
   :root { color-scheme: light dark; }
   body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 0 auto; padding: 2rem 1.25rem; max-width: 820px; }
@@ -33,7 +33,7 @@ export function adminDashboardPage(scriptNonce: string, supabaseUrl: string, ano
 </style>
 </head>
 <body>
-  <h1>TabMargin analytics</h1>
+  <h1>Tabmargin analytics</h1>
   <p class="muted">Sign in with an admin account to view metrics.</p>
   <form id="login">
     <input id="email" type="email" placeholder="email" autocomplete="username" required>
