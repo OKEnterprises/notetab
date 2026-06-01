@@ -45,6 +45,8 @@ Monorepo with independently-deployed projects:
   - `GET /billing/success`, `GET /billing/cancel` — **302 redirect shims** to the static landing pages on the web app (see "Auxiliary static pages" below). Kept so Stripe Sessions created with old `${BILLING_RETURN_URL}/billing/*` URLs still land correctly. Hardcode the web origin (not `BILLING_RETURN_URL`) to avoid a redirect loop while the env is mid-transition.
   - `GET /reset-password` — **302 redirect shim** to the static reset page on the web app, kept for recovery emails sent before the cutover and older extension installs (whose bundled `api.js` still builds `redirect_to` as `${API_URL}/reset-password`). Supabase puts the recovery token in the URL *fragment*, which survives a fragment-less redirect. Lives in `routes/account.ts`.
   - `POST /webhooks/stripe` — signature-verified, upserts the `subscriptions` row on `customer.subscription.{created,updated,deleted}`. Reads `current_period_end` from either Subscription or SubscriptionItem (moved in API 2025-04-30). The Stripe client pins `apiVersion` `2025-02-24.acacia`.
+  - `POST /e` — public, **cookieless pageview beacon** for the landing page. No auth; the Worker derives a daily visitor hash server-side and inserts an `analytics_pageviews` row. (`routes/analytics.ts`)
+  - `GET /admin` — server-rendered **analytics dashboard** (signs in client-side, then calls `/admin/stats`). `GET /admin/stats` returns the metrics JSON, gated by the `ADMIN_EMAILS` allow-list. See "Analytics" below. (`routes/analytics.ts`, `views/admin.ts`)
 
 **Storage Schema**
 ```javascript
@@ -190,3 +192,40 @@ When modifying theme behavior, remember that changes must be coordinated across 
 - `extension/popup.js`: Theme preference UI and storage
 
 When adding new SVG icons, ensure they have appropriate CSS filters defined for both light and dark modes.
+
+## Analytics
+
+First-party and privacy-preserving — no third-party scripts, no cookies, all data
+lives in our own Supabase. Three metrics:
+
+| Metric | Source | How it's collected |
+|---|---|---|
+| Landing-page **unique visitors** | `analytics_pageviews` | `site/analytics.js` fires a `sendBeacon` to `POST /e`; the Worker stores only `visitor_hash = sha256(ANALYTICS_SALT \| utc-day \| ip \| user-agent)`. The hash rotates daily and isn't reversible, so it dedupes within a day without identifying anyone. |
+| **Logins** | `analytics_logins` | A Postgres trigger on `auth.sessions` insert (`record_login()`) — Supabase creates a session row per sign-in, so this captures logins from **every** surface with zero client code. Token refreshes reuse the session and aren't counted. |
+| **Active users** (DAU/WAU/MAU) | `analytics_user_activity` | The `stampActivity` middleware on `GET /me` upserts one row per user per UTC day. The web app calls `/me` on load and on focus for every signed-in user, so `/me` doubles as the heartbeat. Fire-and-forget via `waitUntil`; failures never affect the response. |
+
+Extension active users are **not** tracked here — Mozilla's AMO developer dashboard
+already reports the add-on's daily active users for free.
+
+All three tables have **RLS enabled with no policies**, so only the service-role
+key (the Worker) can touch them. The Worker writes via `serviceClient`.
+
+**Reading the numbers.** Visit `https://api.tabmargin.com/admin` and sign in with
+an email listed in `ADMIN_EMAILS`. The page calls the `analytics_summary()` RPC
+(SECURITY DEFINER, execute granted only to `service_role`) and shows headline
+cards plus a 30-day table. Or query the RPC directly in the Supabase SQL editor:
+`select public.analytics_summary();`. (Because `visitor_hash` embeds the day, a
+multi-day `count(distinct visitor_hash)` is the *sum* of daily uniques —
+"visitor-days" — not distinct people across the window; fields are named so.)
+
+**Config (set once, no code deploy):**
+- `ANALYTICS_SALT` — secret: `wrangler secret put ANALYTICS_SALT` (any long random string).
+- `ADMIN_EMAILS` — var (comma-separated) in the Cloudflare dashboard or `wrangler secret put ADMIN_EMAILS`.
+- Apply the schema with `supabase db push` (migration `…_analytics.sql`). The
+  `auth.sessions` trigger needs the elevated role `db push` uses; if a hardened
+  project rejects it, drop the trigger and instead surface logins from
+  `auth.users.last_sign_in_at`.
+
+The landing `POST /e` beacon is a CORS-safelisted `text/plain` request, so it
+needs no preflight and `tabmargin.com` does **not** have to be in
+`ALLOWED_ORIGINS` (the browser never reads the 204 response).

@@ -9,3 +9,9 @@ BILLING_RETURN_URL=http://localhost:8787
 # moz-extension:// origin and BILLING_RETURN_URL's origin are always allowed;
 # add web origins here. Entries are normalized via new URL().origin.
 # ALLOWED_ORIGINS=https://app.tabmargin.com,https://tabmargin.com
+
+# Analytics: secret used to derive the daily, cookieless landing-page visitor
+# hash (sha256 of salt+day+ip+user-agent). Any long random string.
+ANALYTICS_SALT=dev-analytics-salt-change-me
+# Comma-separated emails allowed to view GET /admin analytics.
+ADMIN_EMAILS=you@example.com

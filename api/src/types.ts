@@ -7,6 +7,10 @@ export type Bindings = {
   STRIPE_WEBHOOK_SECRET: string
   BILLING_RETURN_URL: string
   ALLOWED_ORIGINS?: string
+  // Random secret used to derive the daily, cookieless landing-page visitor hash.
+  ANALYTICS_SALT?: string
+  // Comma-separated emails allowed to read GET /admin analytics.
+  ADMIN_EMAILS?: string
 }
 
 export type SubRow = {
