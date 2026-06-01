@@ -90,6 +90,15 @@ body::before {
 }
 
 .note-item {
+  /* Rendered as a <button> for keyboard/AT access; strip the native chrome so
+     it reads as a flush list row. */
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font: inherit;
+  color: inherit;
   padding: 12px;
   margin-bottom: 2px;
   border-radius: var(--radius-md);
@@ -119,6 +128,7 @@ body::before {
 }
 
 .note-item-title {
+  display: block;
   font-size: 13px;
   font-weight: 500;
   color: var(--ink-primary);
@@ -130,6 +140,7 @@ body::before {
 }
 
 .note-item-preview {
+  display: block;
   font-size: 12px;
   color: var(--ink-secondary);
   white-space: nowrap;

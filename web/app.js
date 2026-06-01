@@ -59,22 +59,31 @@
   function openSettings() {
     settingsPanel.classList.add('open');
     settingsScrim.classList.add('open');
+    settingsToggle.setAttribute('aria-expanded', 'true');
+    // Move focus into the panel (tabindex=-1, labelled "Settings") so keyboard
+    // and screen-reader users land in the opened slide-over.
+    settingsPanel.focus();
     // Re-fetch /me so the plan badge is current each time the panel opens.
     window.TabMarginAccount?.renderAccountView();
   }
 
-  function closeSettings() {
+  // restoreFocus returns focus to the gear after a user-initiated close. Skip it
+  // when closing as part of the signed-out teardown (showGate) — the gear is
+  // hidden then, so focusing it would just drop focus to <body>.
+  function closeSettings(restoreFocus = false) {
     settingsPanel.classList.remove('open');
     settingsScrim.classList.remove('open');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && !appShell.hidden) settingsToggle.focus();
   }
 
   settingsToggle.addEventListener('click', () => {
-    if (settingsPanel.classList.contains('open')) closeSettings();
+    if (settingsPanel.classList.contains('open')) closeSettings(true);
     else openSettings();
   });
-  settingsScrim.addEventListener('click', closeSettings);
+  settingsScrim.addEventListener('click', () => closeSettings(true));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && settingsPanel.classList.contains('open')) closeSettings();
+    if (e.key === 'Escape' && settingsPanel.classList.contains('open')) closeSettings(true);
   });
 
   // After returning from Stripe checkout/portal, re-fetch /me so the plan badge

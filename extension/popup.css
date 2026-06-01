@@ -5,7 +5,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui);
   background-color: var(--bg-canvas);
   color: var(--ink-primary);
   width: 280px;
@@ -84,14 +84,9 @@ body {
   transition: background-color 0.2s var(--ease), transform 0.15s var(--ease);
 }
 
-.btn-primary:hover { background-color: #a35f47; }
+.btn-primary:hover { background-color: var(--accent-hover); }
 .btn-primary:active { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-:root[data-theme="dark"] .btn-primary:hover,
-:root:not([data-theme="light"]) .btn-primary:hover {
-  background-color: #c98365;
-}
 
 .btn-text {
   font-family: inherit;

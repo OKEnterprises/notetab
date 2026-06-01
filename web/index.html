@@ -25,8 +25,8 @@
 
       <div id="signedOutView">
         <form class="auth-form" id="authForm">
-          <input type="email" id="emailInput" class="text-input" placeholder="email" autocomplete="email" required>
-          <input type="password" id="passwordInput" class="text-input" placeholder="password" autocomplete="current-password" required>
+          <input type="email" id="emailInput" class="text-input" aria-label="Email" placeholder="email" autocomplete="email" required>
+          <input type="password" id="passwordInput" class="text-input" aria-label="Password" placeholder="password" autocomplete="current-password" required>
           <div class="auth-actions">
             <button type="submit" class="btn-primary" id="signInBtn">Sign in</button>
             <button type="button" class="btn-text" id="signUpBtn">Create account</button>
@@ -35,13 +35,13 @@
         </form>
       </div>
 
-      <div class="auth-message" id="authMessage" hidden></div>
+      <div class="auth-message" id="authMessage" role="alert" hidden></div>
     </div>
   </div>
 
   <!-- ===== App (shown when signed in) ===== -->
   <div class="app-shell" id="appShell" hidden>
-    <button class="settings-toggle" id="settingsToggle" title="Settings" aria-label="Settings" aria-haspopup="true">
+    <button class="settings-toggle" id="settingsToggle" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -125,7 +125,7 @@
          Visibility is driven by the .open class so it can slide both ways;
          the [hidden] attribute would force display:none and kill the transition. -->
     <div class="settings-scrim" id="settingsScrim"></div>
-    <aside class="settings-panel" id="settingsPanel" aria-label="Settings">
+    <aside class="settings-panel" id="settingsPanel" tabindex="-1" aria-label="Settings">
       <div class="settings-panel-inner">
         <section class="section">
           <h2>Account</h2>
