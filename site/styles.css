@@ -12,8 +12,8 @@
   --ink-primary: #2a2520;
   --ink-secondary: #6f6055;
   --ink-tertiary: #9d9181;
-  --accent: #b87055;
-  --accent-hover: #a35f47;
+  --accent: #a35f47;
+  --accent-hover: #8b4d37;
   --accent-soft: #e8d5cc;
   --on-accent: #fff7ef;
   --grain-opacity: 0.035;
@@ -173,7 +173,7 @@ h1 {
 
 .cta-note {
   font-size: 13px;
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   margin-top: 18px;
 }
 
@@ -256,7 +256,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   flex-wrap: wrap;
   gap: 12px;
 }

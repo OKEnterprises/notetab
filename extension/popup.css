@@ -55,7 +55,7 @@ body {
 }
 
 .text-input::placeholder {
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
 }
 
 .text-input:focus {
@@ -108,7 +108,7 @@ body {
 .btn-text-quiet {
   padding: 6px 4px;
   font-size: 11px;
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   margin-top: 6px;
 }
 
@@ -154,7 +154,7 @@ body {
 
 .account-meta {
   font-size: 11px;
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   padding-left: 20px;
   margin-top: 2px;
   letter-spacing: 0.01em;

@@ -166,7 +166,7 @@ body::before {
   border: none;
   padding: 6px;
   border-radius: var(--radius-sm);
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   transition: color 0.25s var(--ease), background-color 0.25s var(--ease);
   z-index: 5;
   display: flex;
@@ -213,7 +213,7 @@ body::before {
 }
 
 .note-title::placeholder {
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
 }
 
 /* Hairline accent that fades in on focus — a soft pen-mark */
@@ -258,7 +258,7 @@ body::before {
 }
 
 .editor::placeholder {
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
 }
 
 /* ----- Status bar ----- */
