@@ -1,4 +1,4 @@
-// TabMargin API client — shared by popup (auth UI) and newtab (sync engine).
+// Tabmargin API client — shared by popup (auth UI) and newtab (sync engine).
 // No build step; loaded via <script> tag, exposes window.TabMarginAPI.
 
 (function () {

@@ -66,7 +66,7 @@ describe('analytics API', () => {
   it('serves the admin dashboard HTML', async () => {
     const res = await app.request('/admin', {}, env)
     expect(res.status).toBe(200)
-    expect(await res.text()).toContain('TabMargin analytics')
+    expect(await res.text()).toContain('Tabmargin analytics')
   })
 
   it('rejects unauthenticated stats requests', async () => {

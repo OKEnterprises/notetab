@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TabMargin is a Firefox extension (Manifest v2) that replaces the new tab page with a minimalist notepad. Users can create multiple notes, which are auto-saved and persist using the browser's local storage API. An optional paid cloud-sync tier (in progress) syncs notes across devices via a Cloudflare Workers + Hono API backed by Supabase Postgres.
+Tabmargin is a Firefox extension (Manifest v2) that replaces the new tab page with a minimalist notepad. Users can create multiple notes, which are auto-saved and persist using the browser's local storage API. An optional paid cloud-sync tier (in progress) syncs notes across devices via a Cloudflare Workers + Hono API backed by Supabase Postgres.
 
 The same experience is also a **hosted web app** at `app.tabmargin.com` (for people who don't use the extension — e.g. iPad users), with a marketing landing page at `tabmargin.com`. The web app reuses the extension's code verbatim through a storage adapter (see "Shared core & storage adapter" below); the web app **requires login**, and like the extension, free users get a local-only notepad while cross-device sync requires Pro.
 

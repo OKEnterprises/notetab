@@ -2,7 +2,7 @@
   "name": "tabmargin-web",
   "version": "0.1.0",
   "private": true,
-  "description": "TabMargin web app (app.tabmargin.com) — static; shares its core with the extension",
+  "description": "Tabmargin web app (app.tabmargin.com) — static; shares its core with the extension",
   "scripts": {
     "build": "sh build.sh"
   }
