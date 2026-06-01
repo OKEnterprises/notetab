@@ -20,8 +20,8 @@
 
       <div id="signedOutView">
         <form class="auth-form" id="authForm">
-          <input type="email" id="emailInput" class="text-input" placeholder="email" autocomplete="email" required>
-          <input type="password" id="passwordInput" class="text-input" placeholder="password" autocomplete="current-password" required>
+          <input type="email" id="emailInput" class="text-input" aria-label="Email" placeholder="email" autocomplete="email" required>
+          <input type="password" id="passwordInput" class="text-input" aria-label="Password" placeholder="password" autocomplete="current-password" required>
           <div class="auth-actions">
             <button type="submit" class="btn-primary" id="signInBtn">Sign in</button>
             <button type="button" class="btn-text" id="signUpBtn">Create account</button>
@@ -30,7 +30,7 @@
         </form>
       </div>
 
-      <div class="auth-message" id="authMessage" hidden></div>
+      <div class="auth-message" id="authMessage" role="alert" hidden></div>
 
       <div id="signedInView" hidden>
         <div class="account-row">

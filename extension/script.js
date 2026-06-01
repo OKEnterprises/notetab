@@ -245,7 +245,10 @@ function loadCurrentNote() {
 // Move the .active highlight without rebuilding the list (used on note switch).
 function setActiveNoteItem() {
   for (const item of notesList.children) {
-    item.classList.toggle('active', item.dataset.noteId === state.currentNoteId);
+    const isActive = item.dataset.noteId === state.currentNoteId;
+    item.classList.toggle('active', isActive);
+    if (isActive) item.setAttribute('aria-current', 'true');
+    else item.removeAttribute('aria-current');
   }
 }
 
@@ -256,18 +259,24 @@ function renderNotesList() {
   notesList.innerHTML = '';
 
   state.notes.forEach(note => {
-    const noteItem = document.createElement('div');
+    // A real <button> so the notes list is keyboard-operable (Tab to focus,
+    // Enter/Space to switch — both fire the delegated click handler natively)
+    // and announced as a button to assistive tech. aria-current marks the open
+    // note. Children are <span>s: a <button> may only contain phrasing content.
+    const noteItem = document.createElement('button');
+    noteItem.type = 'button';
     noteItem.className = 'note-item';
     noteItem.dataset.noteId = note.id;
     if (note.id === state.currentNoteId) {
       noteItem.classList.add('active');
+      noteItem.setAttribute('aria-current', 'true');
     }
 
-    const title = document.createElement('div');
+    const title = document.createElement('span');
     title.className = 'note-item-title';
     title.textContent = noteListTitle(note);
 
-    const preview = document.createElement('div');
+    const preview = document.createElement('span');
     preview.className = 'note-item-preview';
     preview.textContent = note.content.substring(0, PREVIEW_LENGTH) || 'Empty note';
 

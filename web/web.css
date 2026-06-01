@@ -64,7 +64,7 @@ body { width: auto; min-width: 0; }
   border: none;
   padding: 7px;
   border-radius: var(--radius-sm);
-  color: var(--ink-tertiary);
+  color: var(--ink-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,6 +114,10 @@ body { width: auto; min-width: 0; }
   transform: translateX(0);
   visibility: visible;
 }
+
+/* The panel receives programmatic focus on open (for AT); it's a container, not
+   a control, so don't draw a focus ring around the whole slide-over. */
+.settings-panel:focus { outline: none; }
 
 .settings-panel-inner { padding: 28px 22px; }
 

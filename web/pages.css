@@ -80,7 +80,7 @@ button {
 button:hover:not([disabled]) { filter: brightness(0.94); }
 button[disabled] { opacity: 0.5; cursor: default; }
 
-.meta { color: var(--ink-tertiary); font-size: 13px; margin-top: 16px; text-align: center; }
+.meta { color: var(--ink-secondary); font-size: 13px; margin-top: 16px; text-align: center; }
 .error { color: var(--danger); font-size: 13px; margin-top: 12px; }
 /* The palette has no success-green, so the confirmation uses primary ink. */
 .ok { color: var(--ink-primary); font-size: 14px; margin-top: 12px; text-align: center; }
