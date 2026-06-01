@@ -21,8 +21,8 @@ app.use('*', apiCors)
 //   GET    /me                              — meRoutes
 //   GET    /notes, PUT/DELETE /notes/:id    — notesRoutes (gated by requirePro)
 //   POST   /billing/checkout, /billing/portal, /webhooks/stripe
-//   GET    /billing/success, /billing/cancel  — billingRoutes
-//   GET    /reset-password                  — accountRoutes
+//   GET    /billing/success, /billing/cancel  — 302 shims -> static pages on the web app
+//   GET    /reset-password                  — 302 shim -> static page on the web app (accountRoutes)
 //   POST   /e                               — public cookieless pageview beacon (analyticsRoutes)
 //   GET    /admin, /admin/stats             — analytics dashboard + admin-gated metrics JSON
 app.get('/health', (c) => c.json({ ok: true }))

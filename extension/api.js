@@ -5,6 +5,10 @@
   const SUPABASE_URL = 'https://lktbfmoaodwmkdywkmfs.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_eBYGppKqlRMhzB8JTXcRGg_Gt4BszpL';
   const API_URL = 'https://api.tabmargin.com';
+  // Password-reset is a static page on the web app. The API keeps a redirect
+  // shim at /reset-password for older installs, but new reset emails point here
+  // directly to skip the hop.
+  const WEB_URL = 'https://app.tabmargin.com';
 
   async function supabaseAuth(path, body) {
     const res = await fetch(`${SUPABASE_URL}/auth/v1${path}`, {
@@ -56,7 +60,7 @@
   }
 
   async function requestPasswordReset(email) {
-    const redirectTo = encodeURIComponent(`${API_URL}/reset-password`);
+    const redirectTo = encodeURIComponent(`${WEB_URL}/reset-password`);
     await supabaseAuth(`/recover?redirect_to=${redirectTo}`, { email });
     return { ok: true };
   }

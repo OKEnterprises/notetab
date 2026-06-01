@@ -2,9 +2,15 @@ import { Hono } from 'hono'
 import Stripe from 'stripe'
 import { requireAuth } from '../auth'
 import { serviceClient, userClient } from '../db'
-import { nonce, withHtmlSecurity } from '../security'
-import { landingPage } from '../views/html'
 import type { Bindings } from '../types'
+
+// Stripe's post-checkout/portal landing pages are now static on the web app.
+// These GET routes remain as redirect shims so any Stripe Session created with
+// the old `${BILLING_RETURN_URL}/billing/*` URLs (before BILLING_RETURN_URL is
+// repointed at the web origin) still lands somewhere sensible. Hardcoded — and
+// intentionally NOT BILLING_RETURN_URL, which may still be this Worker mid-
+// transition and would redirect-loop.
+const WEB_URL = 'https://app.tabmargin.com'
 
 // Pin the API version the SDK (and this code) was written against so object
 // shapes can't shift silently under us when Stripe rolls the account default.
@@ -74,27 +80,8 @@ export function billingRoutes() {
     return c.json({ url: session.url })
   })
 
-  app.get('/billing/success', (c) => {
-    const n = nonce()
-    withHtmlSecurity(c, n)
-    return c.html(landingPage(
-      n,
-      'TabMargin - Subscribed',
-      'You are in.',
-      '<p>Cloud sync is now active on your TabMargin account. Open a new tab and your notes will start syncing in the background.</p>'
-    ))
-  })
-
-  app.get('/billing/cancel', (c) => {
-    const n = nonce()
-    withHtmlSecurity(c, n)
-    return c.html(landingPage(
-      n,
-      'TabMargin - Checkout cancelled',
-      'No charge.',
-      '<p>You closed checkout before subscribing. Head back to TabMargin whenever you are ready.</p>'
-    ))
-  })
+  app.get('/billing/success', (c) => c.redirect(`${WEB_URL}/billing/success`, 302))
+  app.get('/billing/cancel', (c) => c.redirect(`${WEB_URL}/billing/cancel`, 302))
 
   // Idempotency note: we don't dedup on event.id. Instead every subscription
   // event triggers stripe.subscriptions.retrieve(), so we always upsert Stripe's

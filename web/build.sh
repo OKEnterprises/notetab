@@ -22,4 +22,13 @@ cp ../extension/tokens.css ../extension/styles.css ../extension/popup.css "$DIST
 # Web-specific overlays (these win over any same-named file copied above)
 cp storage.js app.js web.css index.html _headers "$DIST"/
 
-echo "Built $DIST/ ($(ls -1 "$DIST" | wc -l | tr -d ' ') files)"
+# Standalone auxiliary pages (reset-password + billing landings). These are
+# plain static files — no shared core — and link tokens.css (copied above) so
+# they match the app. The Worker keeps redirect shims at the old API paths so
+# in-flight recovery emails / older extension installs still land here.
+cp reset-password.html reset-password.js pages.css "$DIST"/
+mkdir -p "$DIST"/billing
+cp billing/success.html "$DIST"/billing/success.html
+cp billing/cancel.html "$DIST"/billing/cancel.html
+
+echo "Built $DIST/ ($(find "$DIST" -type f | wc -l | tr -d ' ') files)"

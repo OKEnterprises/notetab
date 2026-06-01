@@ -1,0 +1,90 @@
+/* ============================================================
+   TabMargin — auxiliary standalone pages
+   (reset-password, billing/success, billing/cancel)
+
+   Tiny static pages served by Cloudflare Pages. They link the shared
+   design tokens (tokens.css, copied from the extension at build time) so
+   they match the app and follow the OS color scheme automatically — there
+   is no theme-switching JS here, so only the prefers-color-scheme path in
+   tokens.css applies. Kept separate from the app shell (styles.css/web.css).
+   ============================================================ */
+
+:root { color-scheme: light dark; }
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-ui);
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--bg-recessed);
+  border-radius: 16px;
+  padding: 40px 44px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+}
+
+/* Message pages (billing) read better centered and a touch roomier. */
+.card.centered { text-align: center; max-width: 460px; padding: 48px 52px; }
+
+h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 32px;
+  margin: 0 0 18px;
+  color: var(--ink-primary);
+}
+.card.centered h1 { font-size: 38px; margin-bottom: 16px; }
+
+p { font-size: 15px; line-height: 1.6; margin: 0 0 8px; color: var(--ink-secondary); }
+
+label { display: block; font-size: 13px; margin: 14px 0 6px; color: var(--ink-secondary); }
+
+input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bg-recessed);
+  background-color: var(--bg-canvas);
+  font: inherit;
+  color: var(--ink-primary);
+}
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+
+button {
+  margin-top: 18px;
+  width: 100%;
+  padding: 11px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s var(--ease);
+}
+/* No accent-hover token exists in tokens.css; a small brightness nudge works
+   in both light and dark without hardcoding a second hex. */
+button:hover:not([disabled]) { filter: brightness(0.94); }
+button[disabled] { opacity: 0.5; cursor: default; }
+
+.meta { color: var(--ink-tertiary); font-size: 13px; margin-top: 16px; text-align: center; }
+.error { color: var(--danger); font-size: 13px; margin-top: 12px; }
+/* The palette has no success-green, so the confirmation uses primary ink. */
+.ok { color: var(--ink-primary); font-size: 14px; margin-top: 12px; text-align: center; }
+
+.actions { margin-top: 22px; }
+.btn-link { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 500; }
+.btn-link:hover { text-decoration: underline; }
