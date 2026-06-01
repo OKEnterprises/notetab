@@ -1,7 +1,7 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Tabmargin",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Turn your new tab page into a minimalist notepad with persistent storage",
 
   "icons": {
@@ -9,7 +9,7 @@
     "96": "icons/notes.svg"
   },
 
-  "browser_action": {
+  "action": {
     "default_icon": {
       "48": "icons/notes.svg",
       "96": "icons/notes.svg"
@@ -23,7 +23,10 @@
   },
 
   "permissions": [
-    "storage",
+    "storage"
+  ],
+
+  "host_permissions": [
     "https://api.tabmargin.com/*",
     "https://*.supabase.co/*"
   ],
@@ -31,7 +34,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "notetab@example.com",
-      "strict_min_version": "79.0"
+      "strict_min_version": "109.0"
     }
   }
 }
