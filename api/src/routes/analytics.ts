@@ -25,6 +25,25 @@ function jwtSub(token: string): string | null {
   }
 }
 
+// Fixed-window rate limit for the public beacon, per IP, in isolate memory.
+// Coarse by design: Workers run many isolates so the real ceiling is N× this,
+// but it still bounds what any single connection can insert into
+// analytics_pageviews without needing KV/DO. Real page loads fire once.
+const BEACON_RATE_MAX = 20
+const BEACON_RATE_WINDOW_MS = 60_000
+const beaconBuckets = new Map<string, { count: number; windowStart: number }>()
+
+function beaconRateLimited(ip: string, now: number): boolean {
+  if (beaconBuckets.size > 10_000) beaconBuckets.clear() // memory backstop
+  const bucket = beaconBuckets.get(ip)
+  if (!bucket || now - bucket.windowStart >= BEACON_RATE_WINDOW_MS) {
+    beaconBuckets.set(ip, { count: 1, windowStart: now })
+    return false
+  }
+  bucket.count++
+  return bucket.count > BEACON_RATE_MAX
+}
+
 async function sha256Hex(input: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
   return Array.from(new Uint8Array(digest))
@@ -82,6 +101,10 @@ export function analyticsRoutes() {
     const ip = c.req.header('CF-Connecting-IP') ?? ''
     const ua = c.req.header('User-Agent') ?? ''
     const country = c.req.header('CF-IPCountry') ?? null
+
+    // Over the limit: still 204 (the beacon never reads the response, and an
+    // abuser learns nothing), just skip the insert.
+    if (beaconRateLimited(ip, Date.now())) return c.body(null, 204)
 
     try {
       const visitorHash = await sha256Hex(`${c.env.ANALYTICS_SALT ?? ''}|${utcDay()}|${ip}|${ua}`)

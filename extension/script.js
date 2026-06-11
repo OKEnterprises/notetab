@@ -3,6 +3,12 @@ const AUTOSAVE_DEBOUNCE_MS = 500;
 const FLUSH_DEBOUNCE_MS = 200;
 const DELETE_CONFIRM_MS = 3000;
 const PREVIEW_LENGTH = 50;
+const ADOPT_DEBOUNCE_MS = 150;
+
+// Identifies this tab's own storage writes. The extension's storage.onChanged
+// fires in the writing context too (unlike the web's storage event), so every
+// notes write carries this tag and the change listener skips its own echoes.
+const WRITER_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 // Persisted document state (mirrored into browser.storage.local)
 let state = {
@@ -26,6 +32,11 @@ let isSyncing = false;
 let syncError = false;
 let needsUpgrade = false;
 let lastSyncAt = null;
+// Which account lastSyncAt belongs to. A cursor is only valid for the user who
+// produced it — signing into a different account must not pull with the old one
+// (it would skip every note older than the previous account's cursor).
+let syncUserId = null;
+let adoptTimer = null;
 
 // DOM elements
 const sidebar = document.getElementById('sidebar');
@@ -48,7 +59,8 @@ async function loadNotes() {
       'currentNoteId',
       'dirtyNoteIds',
       'pendingDeleteIds',
-      'lastSyncAt'
+      'lastSyncAt',
+      'syncUserId'
     ]);
 
     if (result.notes && result.notes.length > 0) {
@@ -81,13 +93,15 @@ function loadSyncState(result) {
   (result.dirtyNoteIds || []).forEach(id => dirtyNotes.add(id));
   (result.pendingDeleteIds || []).forEach(id => pendingDeletes.add(id));
   lastSyncAt = result.lastSyncAt || null;
+  syncUserId = result.syncUserId || null;
 }
 
 async function saveSyncState() {
   await TabMarginStorage.set({
     dirtyNoteIds: [...dirtyNotes],
     pendingDeleteIds: [...pendingDeletes],
-    lastSyncAt
+    lastSyncAt,
+    syncUserId
   });
 }
 
@@ -104,7 +118,8 @@ async function saveNotes() {
       currentNoteId: state.currentNoteId,
       dirtyNoteIds: [...dirtyNotes],
       pendingDeleteIds: [...pendingDeletes],
-      lastSyncAt
+      lastSyncAt,
+      lastWriter: WRITER_ID
     });
     updateSaveStatus('saved');
     scheduleFlush();
@@ -119,8 +134,7 @@ function createNewNote() {
   return {
     // Collision-resistant id: a bare Date.now() string can repeat for notes
     // created in the same millisecond. base36 time + random suffix stays within
-    // the server's id charset and works on the Firefox 79 baseline (no
-    // crypto.randomUUID, which needs FF 95+).
+    // the server's id charset ([A-Za-z0-9_-]) and is shorter than a UUID.
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
     title: '',
     content: '',
@@ -437,10 +451,14 @@ async function flushPending() {
         // don't apply the server timestamps — the local copy is now ahead.
         continue;
       }
+      // Adopt the server timestamps but do NOT advance lastSyncAt here: the
+      // cursor may only move from pull results. Advancing it past our own
+      // push's updated_at would skip any note another device pushed between
+      // our last pull and now. The next pull re-fetches this note (inclusive
+      // gte cursor) and advances the cursor then; the merge is idempotent.
       if (result.note) {
         note.createdAt = result.note.created_at;
         note.updatedAt = result.note.updated_at;
-        lastSyncAt = maxIso(lastSyncAt, result.note.updated_at);
       }
       dirtyNotes.delete(id);
       await saveNotes();
@@ -487,7 +505,8 @@ async function pullAndMerge() {
       currentNoteId: state.currentNoteId,
       dirtyNoteIds: [...dirtyNotes],
       pendingDeleteIds: [...pendingDeletes],
-      lastSyncAt
+      lastSyncAt,
+      lastWriter: WRITER_ID
     });
     // renderNotesList already refreshed the list + active highlight. Only reset
     // the editor from state if the user hasn't typed since the pull began;
@@ -527,6 +546,73 @@ function mergeRemote(remoteNotes) {
   merged.dirtyNoteIds.forEach(id => dirtyNotes.add(id));
 }
 
+// ---- Cross-tab adoption ----
+// Storage holds the whole notes array, so two open tabs are last-writer-wins:
+// without adoption, typing in a stale tab persists its stale copy of every
+// note and silently discards the other tab's edits. When another context
+// writes notes, re-read storage and merge it into this tab's state
+// (mergeLocalSnapshot: snapshot is the baseline, our strictly-newer or unsaved
+// copies survive, explicit deletes win).
+function scheduleAdopt() {
+  clearTimeout(adoptTimer);
+  adoptTimer = setTimeout(adoptExternalSnapshot, ADOPT_DEBOUNCE_MS);
+}
+
+async function adoptExternalSnapshot() {
+  if (storageReadFailed) return;
+  // Don't interleave with a pull/flush mutating state at its own await points.
+  if (isSyncing) { scheduleAdopt(); return; }
+
+  let result;
+  try {
+    result = await TabMarginStorage.get([
+      'notes', 'currentNoteId', 'dirtyNoteIds', 'pendingDeleteIds', 'lastSyncAt'
+    ]);
+  } catch (error) {
+    console.error('Error adopting external notes:', error);
+    return;
+  }
+  if (isSyncing) { scheduleAdopt(); return; }
+  if (!result.notes || result.notes.length === 0) return;
+
+  // Capture in-flight edits (fresh updatedAt) so the merge keeps them.
+  // Everything from here on is synchronous — no keystroke can interleave.
+  updateCurrentNote();
+
+  const merged = TabMarginSync.mergeLocalSnapshot({
+    localNotes: state.notes,
+    snapshotNotes: result.notes,
+    currentNoteId: state.currentNoteId,
+    snapshotCurrentNoteId: result.currentNoteId || null,
+    dirtyNoteIds: [...dirtyNotes],
+    snapshotDirtyNoteIds: result.dirtyNoteIds || [],
+    pendingDeleteIds: [...pendingDeletes],
+    snapshotPendingDeleteIds: result.pendingDeleteIds || [],
+    createFallbackNote: createNewNote
+  });
+
+  state.notes = merged.notes;
+  state.currentNoteId = merged.currentNoteId;
+  dirtyNotes.clear();
+  merged.dirtyNoteIds.forEach(id => dirtyNotes.add(id));
+  pendingDeletes.clear();
+  merged.pendingDeleteIds.forEach(id => pendingDeletes.add(id));
+  lastSyncAt = maxIso(lastSyncAt, result.lastSyncAt || null);
+
+  renderNotesList();
+  // Refresh the editor only when the adopted copy of the open note actually
+  // beat ours (LWW above kept our text whenever we were the newer writer).
+  const current = getCurrentNote();
+  if (current && (noteTitle.value.trim() !== current.title || editor.value !== current.content)) {
+    loadCurrentNote();
+  }
+  // Re-persist when we kept something the snapshot lacked (our newer edits, or
+  // a delete the other tab unknowingly resurrected) so closing this tab now
+  // loses nothing. Converges: the other tab's adoption of this write finds
+  // nothing newer and stops.
+  if (merged.changed) await saveNotes();
+}
+
 function maxIso(a, b) {
   if (!a) return b || null;
   if (!b) return a;
@@ -539,12 +625,30 @@ async function refreshAuthState() {
   isSignedIn = !!session;
 
   if (isSignedIn && !wasSignedIn) {
-    if (!lastSyncAt && dirtyNotes.size === 0 && pendingDeletes.size === 0) {
-      state.notes.forEach(note => dirtyNotes.add(note.id));
+    const userId = session.user?.id || null;
+    if (syncUserId && userId && syncUserId !== userId) {
+      // Different account than the one this device last synced with. The cursor
+      // and flags belong to the previous account: reset them so the pull below
+      // fetches everything, and do NOT mark local notes dirty — auto-uploading
+      // the previous account's notes into this one would leak them. (They stay
+      // visible locally, same as the signed-out state; editing one adopts it.)
+      dirtyNotes.clear();
+      pendingDeletes.clear();
+      lastSyncAt = null;
+      syncUserId = userId;
+      await saveSyncState();
+    } else {
+      syncUserId = userId;
+      // First-ever sign-in on this device: upload the local notes.
+      if (!lastSyncAt && dirtyNotes.size === 0 && pendingDeletes.size === 0) {
+        state.notes.forEach(note => dirtyNotes.add(note.id));
+      }
       await saveSyncState();
     }
     pullAndMerge();
   } else if (!isSignedIn && wasSignedIn) {
+    // Keep lastSyncAt + syncUserId so the same user signing back in resumes
+    // with a valid cursor; a different user is detected above and starts fresh.
     dirtyNotes.clear();
     pendingDeletes.clear();
     syncError = false;
@@ -554,10 +658,18 @@ async function refreshAuthState() {
   renderStatus();
 }
 
+// On narrow viewports the sidebar overlays the editor (see styles.css), so it
+// starts hidden and closes itself after picking a note.
+const smallViewport = window.matchMedia('(max-width: 640px)');
+
+function setSidebarHidden(hidden) {
+  sidebar.classList.toggle('hidden', hidden);
+  toggleSidebarBtn.setAttribute('aria-expanded', String(!hidden));
+}
+
 // Event listeners
 toggleSidebarBtn.addEventListener('click', () => {
-  const hidden = sidebar.classList.toggle('hidden');
-  toggleSidebarBtn.setAttribute('aria-expanded', String(!hidden));
+  setSidebarHidden(!sidebar.classList.contains('hidden'));
 });
 
 newNoteBtn.addEventListener('click', addNewNote);
@@ -566,7 +678,10 @@ newNoteBtn.addEventListener('click', addNewNote);
 // every render.
 notesList.addEventListener('click', (e) => {
   const item = e.target.closest('.note-item');
-  if (item && notesList.contains(item)) switchNote(item.dataset.noteId);
+  if (item && notesList.contains(item)) {
+    switchNote(item.dataset.noteId);
+    if (smallViewport.matches) setSidebarHidden(true);
+  }
 });
 
 noteTitle.addEventListener('input', () => {
@@ -628,7 +743,10 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
-// Listen for theme + auth changes from settings popup
+// Listen for theme + auth changes from the settings popup, and notes changes
+// from other tabs. The extension echoes this tab's own writes back through
+// onChanged (the web storage event doesn't), so self-writes are skipped via the
+// writer tag that rides along with every notes write.
 TabMarginStorage.onChanged((changes, area) => {
   if (area !== 'local') return;
   if (changes.theme) {
@@ -636,6 +754,9 @@ TabMarginStorage.onChanged((changes, area) => {
   }
   if (changes.auth) {
     refreshAuthState();
+  }
+  if (changes.notes && changes.lastWriter?.newValue !== WRITER_ID) {
+    scheduleAdopt();
   }
 });
 
@@ -646,6 +767,12 @@ window.addEventListener('focus', () => {
 
 // Initialize
 async function init() {
+  // The HTML title is the platform-neutral fallback; show the right modifier.
+  const modLabel = /Mac/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+  exportBtn.title = `Export note (${modLabel}E)`;
+
+  if (smallViewport.matches) setSidebarHidden(true);
+
   await loadTheme();
   await loadNotes();
   renderNotesList();

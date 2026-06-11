@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tabmargin Settings</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap">
-
+  <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="popup.css">
 </head>
@@ -20,8 +17,10 @@
 
       <div id="signedOutView">
         <form class="auth-form" id="authForm">
-          <input type="email" id="emailInput" class="text-input" aria-label="Email" placeholder="email" autocomplete="email" required>
-          <input type="password" id="passwordInput" class="text-input" aria-label="Password" placeholder="password" autocomplete="current-password" required>
+          <label class="visually-hidden" for="emailInput">Email</label>
+          <input type="email" id="emailInput" class="text-input" placeholder="email" autocomplete="email" required>
+          <label class="visually-hidden" for="passwordInput">Password</label>
+          <input type="password" id="passwordInput" class="text-input" placeholder="password" autocomplete="current-password" required>
           <div class="auth-actions">
             <button type="submit" class="btn-primary" id="signInBtn">Sign in</button>
             <button type="button" class="btn-text" id="signUpBtn">Create account</button>

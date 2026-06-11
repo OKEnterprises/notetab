@@ -24,8 +24,8 @@ Monorepo with independently-deployed projects:
 
 **Main Application (`extension/newtab.html`, `extension/script.js`, `extension/styles.css`)**
 - `newtab.html`: Single-page application with sidebar, editor, and status bar
-- `script.js`: Manages state (notes array, current note ID), handles auto-save with 500ms debounce, and listens for theme changes via `browser.storage.onChanged`
-- `styles.css`: Theme system using CSS custom properties with three modes: system (default), light, and dark
+- `script.js`: Manages state (notes array, current note ID), handles auto-save with 500ms debounce, and listens via the storage adapter for theme/auth changes and for notes written by other tabs (cross-tab adoption — see "Multi-tab safety" below)
+- `tokens.css`/`styles.css`: Theme system using CSS custom properties + `light-dark()` with three modes: system (default), light, and dark
 
 **Settings Popup (`extension/popup.html`, `extension/popup.js`, `extension/popup.css`)**
 - Accessible via toolbar icon click
@@ -40,12 +40,12 @@ Monorepo with independently-deployed projects:
   - `GET /health` — liveness probe, returns `{ ok: true }`
   - `GET /me` — returns `{ email, plan: 'free' | 'pro', subscription }`
   - `GET /notes`, `PUT /notes/:id`, `DELETE /notes/:id` — gated behind `requirePro`; non-subscribers get **402 Payment Required**
-  - `POST /billing/checkout` — creates Stripe Checkout Session, returns redirect URL
+  - `POST /billing/checkout` — creates Stripe Checkout Session, returns redirect URL. The Stripe customer is persisted to `billing_customers` (service-role-only table) at creation time, so abandoned/repeated checkouts reuse one customer instead of minting orphans; the lookup order is `subscriptions` row → `billing_customers` row → create.
   - `POST /billing/portal` — creates Customer Portal Session
   - `GET /billing/success`, `GET /billing/cancel` — **302 redirect shims** to the static landing pages on the web app (see "Auxiliary static pages" below). Kept so Stripe Sessions created with old `${BILLING_RETURN_URL}/billing/*` URLs still land correctly. Hardcode the web origin (not `BILLING_RETURN_URL`) to avoid a redirect loop while the env is mid-transition.
   - `GET /reset-password` — **302 redirect shim** to the static reset page on the web app, kept for recovery emails sent before the cutover and older extension installs (whose bundled `api.js` still builds `redirect_to` as `${API_URL}/reset-password`). Supabase puts the recovery token in the URL *fragment*, which survives a fragment-less redirect. Lives in `routes/account.ts`.
   - `POST /webhooks/stripe` — signature-verified, upserts the `subscriptions` row on `customer.subscription.{created,updated,deleted}`. Reads `current_period_end` from either Subscription or SubscriptionItem (moved in API 2025-04-30). The Stripe client pins `apiVersion` `2025-02-24.acacia`.
-  - `POST /e` — public, **cookieless pageview beacon** for the landing page. No auth; the Worker derives a daily visitor hash server-side and inserts an `analytics_pageviews` row. (`routes/analytics.ts`)
+  - `POST /e` — public, **cookieless pageview beacon** for the landing page. No auth; the Worker derives a daily visitor hash server-side and inserts an `analytics_pageviews` row. Rate-limited per IP in isolate memory (coarse — many isolates — but bounds row spam without KV/DO); over-limit hits still get 204, the insert is just skipped. (`routes/analytics.ts`)
   - `GET /admin` — server-rendered **analytics dashboard** (signs in client-side, then calls `/admin/stats`). `GET /admin/stats` returns the metrics JSON, gated by the `ADMIN_EMAILS` allow-list. See "Analytics" below. (`routes/analytics.ts`, `views/admin.ts`)
 
 **Storage Schema**
@@ -61,9 +61,22 @@ Monorepo with independently-deployed projects:
     }
   ],
   currentNoteId: "timestamp-string",
-  theme: "system" | "light" | "dark"
+  theme: "system" | "light" | "dark",
+  // Sync bookkeeping (script.js):
+  dirtyNoteIds: ["..."],        // edited locally, not yet pushed
+  pendingDeleteIds: ["..."],    // deleted locally, delete not yet confirmed
+  lastSyncAt: "ISO-8601",       // pull cursor — advanced ONLY by pull results, never by pushes
+  syncUserId: "uuid",           // which account lastSyncAt belongs to (account-switch detection)
+  lastWriter: "tab-id"          // tags each notes write so a tab can skip its own onChanged echo
 }
 ```
+
+**Multi-tab safety.** Storage holds the whole notes array (last-writer-wins), so
+every editor context listens for `notes` changes from other tabs and *adopts*
+them (`adoptExternalSnapshot` in `script.js` → `mergeLocalSnapshot` in
+`sync.js`): the snapshot is the baseline, a local copy survives only when
+strictly newer (in-flight typing) or unsaved-dirty, and explicit deletes win.
+Without this, typing in a stale tab would persist its stale copy of every note.
 
 ### Shared core & storage adapter
 
@@ -102,23 +115,40 @@ at `https://app.tabmargin.com` and delete the GET routes.
 
 ### Theme System Implementation
 
-The theme system uses a data attribute approach:
+The theme system uses a data attribute + `color-scheme`/`light-dark()` approach
+(baseline: Firefox 120 / Chrome 123 / Safari 17.5):
 - `script.js` sets `document.documentElement.setAttribute('data-theme', theme)` on load and when changed
-- `styles.css` defines CSS custom properties for three states:
-  - `:root` - base light theme
-  - `:root[data-theme="dark"]` - forced dark
-  - `:root[data-theme="light"]` - forced light (overrides system preference)
-  - `@media (prefers-color-scheme: dark)` with `:root:not([data-theme="light"])` - system dark mode
-
-SVG icon colors are adjusted using CSS filter properties that change based on theme.
+- `tokens.css` defines each color **once** via `light-dark(light, dark)`; the active
+  scheme is driven by `color-scheme`:
+  - `:root { color-scheme: light dark }` — "system" (or unset) follows the OS
+  - `:root[data-theme="light"]` / `[data-theme="dark"]` pin the scheme
+  - plain light values precede each `light-dark()` as a fallback, so older
+    browsers (e.g. iPadOS < 17.5) degrade to the light theme
+  - the grain tokens (`--grain-opacity`/`--grain-blend`) are not colors, so their
+    dark values still come from small override blocks
+- `site/styles.css` mirrors the same pattern standalone (no shared deps by design)
 
 ### Key Design Decisions
 
 - **No build step**: Plain HTML/CSS/JS for simplicity
-- **Monospace font throughout**: Applied to `body` and cascades to all elements
+- **Self-hosted font**: Manrope (variable, latin + latin-ext) is bundled in
+  `extension/fonts/` + `fonts.css` — no Google Fonts request from the new tab
+  page (latency, offline, and it would undercut the no-third-party privacy
+  story). The web build and `site/` carry their own copies. It is the **only**
+  font across every surface, aux pages included.
 - **Auto-save timing**: 500ms debounce prevents excessive writes
-- **Sidebar behavior**: Uses `display: none` when hidden (not transform) to avoid animation overlap bugs
+- **Sidebar behavior**: Uses `display: none` when hidden (not transform) to avoid
+  animation overlap bugs. Under 640px it overlays the editor (starts hidden,
+  closes after picking a note) instead of squeezing it.
 - **Default note**: Always creates one note on first run; never allows zero notes
+- **Sync cursor discipline**: `lastSyncAt` advances only from pull results. A push
+  must never advance it — that would skip notes another device pushed between our
+  last pull and our push (the inclusive `gte` cursor + idempotent merge make the
+  resulting re-fetch harmless).
+- **Account switching**: `syncUserId` records which account the cursor belongs to.
+  Signing into a *different* account resets the cursor/flags and does **not**
+  mark local notes dirty (the previous account's notes must not auto-upload into
+  the new one); the first-ever sign-in still uploads local notes.
 
 ## Development Workflow
 
@@ -183,6 +213,11 @@ The extension (`extension/manifest.json`) and the API (`api/package.json`) versi
 independently. The manifest version is the AMO-published add-on version (user-facing,
 must increase on every AMO upload); the API's `package.json` version is internal and
 not user-visible. Bumping one does not require bumping the other.
+
+The browser baseline is **Firefox 120** (`strict_min_version`), which is what
+permits `light-dark()` in tokens.css. The gecko id `notetab@example.com` looks
+like a placeholder but is **permanent** — it's the id the add-on was first
+published to AMO under, and AMO ids can never change. Do not "fix" it.
 
 ### Making Changes
 

@@ -5,11 +5,9 @@
    Tiny static pages served by Cloudflare Pages. They link the shared
    design tokens (tokens.css, copied from the extension at build time) so
    they match the app and follow the OS color scheme automatically — there
-   is no theme-switching JS here, so only the prefers-color-scheme path in
-   tokens.css applies. Kept separate from the app shell (styles.css/web.css).
+   is no theme-switching JS here, so tokens.css's default `color-scheme:
+   light dark` applies. Kept separate from the app shell (styles.css/web.css).
    ============================================================ */
-
-:root { color-scheme: light dark; }
 
 * { box-sizing: border-box; }
 
@@ -37,15 +35,15 @@ body {
 /* Message pages (billing) read better centered and a touch roomier. */
 .card.centered { text-align: center; max-width: 460px; padding: 48px 52px; }
 
+/* Same family as the app; sized/tracked like the editor's note title. */
 h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 32px;
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -0.01em;
   margin: 0 0 18px;
   color: var(--ink-primary);
 }
-.card.centered h1 { font-size: 38px; margin-bottom: 16px; }
+.card.centered h1 { font-size: 32px; margin-bottom: 16px; }
 
 p { font-size: 15px; line-height: 1.6; margin: 0 0 8px; color: var(--ink-secondary); }
 
