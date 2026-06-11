@@ -83,6 +83,65 @@ body::before {
   color: var(--ink-secondary);
 }
 
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ----- Search ----- */
+/* Hidden via the [hidden] attr; the explicit rule is needed because this
+   element's display:flex would otherwise override the UA [hidden] rule. */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 10px;
+  padding: 0 10px;
+  background-color: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  transition: box-shadow 0.25s var(--ease);
+}
+
+.search-bar[hidden] { display: none; }
+
+.search-bar:focus-within {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.search-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--ink-tertiary);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  color: var(--ink-primary);
+  padding: 9px 0;
+}
+
+.search-input::placeholder { color: var(--ink-tertiary); }
+.search-input:focus-visible { outline: none; }
+
+.search-clear {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.search-clear:hover { background-color: var(--bg-recessed); }
+.search-clear svg { width: 13px; height: 13px; }
+
 .notes-list {
   flex: 1;
   overflow-y: auto;
@@ -147,6 +206,22 @@ body::before {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 400;
+}
+
+/* Search-match highlight within a list row */
+.note-item mark {
+  background-color: var(--accent-soft);
+  color: var(--ink-primary);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Shown in place of the list when a search matches nothing */
+.notes-empty {
+  padding: 18px 12px;
+  font-size: 12px;
+  color: var(--ink-tertiary);
+  text-align: center;
 }
 
 /* ----- Main area ----- */

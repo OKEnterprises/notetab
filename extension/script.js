@@ -18,6 +18,10 @@ let localSaveState = 'saved'; // 'saving' | 'saved' | 'error'
 let editEpoch = 0;
 let storageReadFailed = false; // true if the initial load threw; blocks saves
 
+// Search (transient): the sidebar filter query and whether the bar is open.
+let searchQuery = '';
+let isSearchOpen = false;
+
 // Sync flags & cursors
 const dirtyNotes = new Set();
 const pendingDeletes = new Set();
@@ -39,6 +43,10 @@ const wordCount = document.getElementById('wordCount');
 const saveStatus = document.getElementById('saveStatus');
 const exportBtn = document.getElementById('exportBtn');
 const deleteBtn = document.getElementById('deleteBtn');
+const searchBtn = document.getElementById('searchBtn');
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
 
 // Storage functions
 async function loadNotes() {
@@ -53,7 +61,7 @@ async function loadNotes() {
 
     if (result.notes && result.notes.length > 0) {
       state.notes = result.notes;
-      state.currentNoteId = result.currentNoteId || state.notes[0].id;
+      state.currentNoteId = result.currentNoteId || sortByModified(state.notes)[0].id;
     } else {
       // Create default note if none exist
       const defaultNote = createNewNote();
@@ -130,6 +138,8 @@ function createNewNote() {
 }
 
 function addNewNote() {
+  // A blank note won't match an active filter; clear search so it's visible.
+  if (isSearchOpen) closeSearch();
   const newNote = createNewNote();
   state.notes.unshift(newNote);
   state.currentNoteId = newNote.id;
@@ -197,10 +207,13 @@ function performDelete() {
   }
 
   const deletedId = state.currentNoteId;
-  const currentIndex = state.notes.findIndex(note => note.id === deletedId);
+  // Select the note that takes the deleted one's place in the visible (sorted)
+  // list, so the selection follows what the user sees.
+  const slot = getVisibleNotes().findIndex(note => note.id === deletedId);
   state.notes = state.notes.filter(note => note.id !== deletedId);
-  const newIndex = currentIndex >= state.notes.length ? state.notes.length - 1 : currentIndex;
-  state.currentNoteId = state.notes[newIndex].id;
+  const visibleAfter = getVisibleNotes();
+  const next = visibleAfter[Math.min(slot, visibleAfter.length - 1)] || state.notes[0];
+  state.currentNoteId = next.id;
 
   pendingDeletes.add(deletedId);
   dirtyNotes.delete(deletedId);
@@ -252,13 +265,80 @@ function setActiveNoteItem() {
   }
 }
 
-// Full rebuild — reserved for add/delete/merge, where the set of notes changes.
-// Clicks are handled by one delegated listener on #notesList (see init), so we
-// don't re-bind per item here.
+// Most-recently-modified first. Returns a new array — state.notes keeps its own
+// order (sync/merge/persistence rely on it); the sidebar is just a sorted view.
+function modifiedTime(note) {
+  return new Date(note.updatedAt || note.createdAt || 0).getTime() || 0;
+}
+
+function sortByModified(notes) {
+  return notes.slice().sort((a, b) => modifiedTime(b) - modifiedTime(a));
+}
+
+// ---- Search ----
+// Notes shown in the sidebar, ordered by last modified. With a query, title
+// matches rank above body-only matches; each group is sorted by recency.
+function getVisibleNotes() {
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return sortByModified(state.notes);
+  const titleMatches = [];
+  const bodyMatches = [];
+  for (const note of state.notes) {
+    if (note.title.toLowerCase().includes(q)) titleMatches.push(note);
+    else if (note.content.toLowerCase().includes(q)) bodyMatches.push(note);
+  }
+  return [...sortByModified(titleMatches), ...sortByModified(bodyMatches)];
+}
+
+// Render `text` into `el`, wrapping each case-insensitive run of `query` in a
+// <mark>. Built from text nodes (never innerHTML) so note content can't inject
+// markup.
+function setHighlightedText(el, text, query) {
+  el.textContent = '';
+  const q = query.trim().toLowerCase();
+  const lower = text.toLowerCase();
+  let idx = q ? lower.indexOf(q) : -1;
+  if (idx === -1) { el.textContent = text; return; }
+  let from = 0;
+  while (idx !== -1) {
+    if (idx > from) el.appendChild(document.createTextNode(text.slice(from, idx)));
+    const mark = document.createElement('mark');
+    mark.textContent = text.slice(idx, idx + q.length);
+    el.appendChild(mark);
+    from = idx + q.length;
+    idx = lower.indexOf(q, from);
+  }
+  if (from < text.length) el.appendChild(document.createTextNode(text.slice(from)));
+}
+
+// For a body-only match, show a window of content around the first hit (rather
+// than the note's opening line) so the match is visible in the preview.
+function previewSnippet(content, query) {
+  const q = query.trim().toLowerCase();
+  const idx = content.toLowerCase().indexOf(q);
+  if (idx <= 0 || !q) return content.substring(0, PREVIEW_LENGTH);
+  const start = Math.max(0, idx - 10);
+  return (start > 0 ? '…' : '') + content.substring(start, start + PREVIEW_LENGTH);
+}
+
+// Full rebuild — reserved for add/delete/merge/search, where the set or order of
+// visible notes changes. Clicks are handled by one delegated listener on
+// #notesList (see init), so we don't re-bind per item here.
 function renderNotesList() {
   notesList.innerHTML = '';
 
-  state.notes.forEach(note => {
+  const visible = getVisibleNotes();
+  const q = searchQuery.trim().toLowerCase();
+
+  if (visible.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'notes-empty';
+    empty.textContent = 'No matching notes';
+    notesList.appendChild(empty);
+    return;
+  }
+
+  visible.forEach(note => {
     // A real <button> so the notes list is keyboard-operable (Tab to focus,
     // Enter/Space to switch — both fire the delegated click handler natively)
     // and announced as a button to assistive tech. aria-current marks the open
@@ -272,13 +352,22 @@ function renderNotesList() {
       noteItem.setAttribute('aria-current', 'true');
     }
 
+    const titleMatched = q && note.title.toLowerCase().includes(q);
+
     const title = document.createElement('span');
     title.className = 'note-item-title';
-    title.textContent = noteListTitle(note);
+    if (titleMatched) setHighlightedText(title, noteListTitle(note), q);
+    else title.textContent = noteListTitle(note);
 
     const preview = document.createElement('span');
     preview.className = 'note-item-preview';
-    preview.textContent = note.content.substring(0, PREVIEW_LENGTH) || 'Empty note';
+    // A body-only match shows a highlighted snippet around the hit; otherwise the
+    // usual leading preview.
+    if (q && !titleMatched && note.content.toLowerCase().includes(q)) {
+      setHighlightedText(preview, previewSnippet(note.content, q) || 'Empty note', q);
+    } else {
+      preview.textContent = note.content.substring(0, PREVIEW_LENGTH) || 'Empty note';
+    }
 
     noteItem.appendChild(title);
     noteItem.appendChild(preview);
@@ -289,14 +378,55 @@ function renderNotesList() {
 function updateActiveNoteListItem() {
   const currentNote = getCurrentNote();
   if (!currentNote) return;
-  for (const item of notesList.children) {
-    if (item.dataset.noteId !== currentNote.id) continue;
-    item.querySelector('.note-item-title').textContent = noteListTitle(currentNote);
-    item.querySelector('.note-item-preview').textContent =
+  // A search filter can change which notes match and their ranking — rebuild the
+  // filtered list instead of patching one row.
+  if (searchQuery.trim()) { renderNotesList(); return; }
+  // Last-modified order: an edited note belongs at the top. If it's already the
+  // first row, refresh its text in place (the hot path while typing); otherwise
+  // rebuild so it rises.
+  const first = notesList.firstElementChild;
+  if (first && first.dataset.noteId === currentNote.id) {
+    first.querySelector('.note-item-title').textContent = noteListTitle(currentNote);
+    first.querySelector('.note-item-preview').textContent =
       currentNote.content.substring(0, PREVIEW_LENGTH) || 'Empty note';
     return;
   }
   renderNotesList();
+}
+
+// ---- Search bar open/close ----
+function openSearch() {
+  isSearchOpen = true;
+  searchBar.hidden = false;
+  searchBtn.setAttribute('aria-expanded', 'true');
+  // Reveal the sidebar if it's collapsed — otherwise the results are hidden.
+  if (sidebar.classList.contains('hidden')) {
+    sidebar.classList.remove('hidden');
+    toggleSidebarBtn.setAttribute('aria-expanded', 'true');
+  }
+  searchInput.focus();
+  searchInput.select();
+}
+
+function closeSearch() {
+  const hadQuery = searchQuery !== '';
+  isSearchOpen = false;
+  searchBar.hidden = true;
+  searchBtn.setAttribute('aria-expanded', 'false');
+  searchQuery = '';
+  searchInput.value = '';
+  if (hadQuery) renderNotesList();
+  editor.focus();
+}
+
+// Cmd/Ctrl+K: open the bar, or just refocus it if already open — never closes.
+function focusSearch() {
+  if (!isSearchOpen) {
+    openSearch();
+  } else {
+    searchInput.focus();
+    searchInput.select();
+  }
 }
 
 function updateStats() {
@@ -582,11 +712,47 @@ editor.addEventListener('input', () => {
 exportBtn.addEventListener('click', exportNote);
 deleteBtn.addEventListener('click', deleteCurrentNote);
 
+searchBtn.addEventListener('click', () => {
+  if (isSearchOpen) closeSearch();
+  else openSearch();
+});
+
+searchClear.addEventListener('click', closeSearch);
+
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value;
+  renderNotesList();
+});
+
+// Enter jumps to the top result and drops focus into the editor.
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const first = notesList.querySelector('.note-item');
+  if (!first) return;
+  switchNote(first.dataset.noteId);
+  editor.focus();
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
+  // Esc closes the search bar from anywhere (no modifier).
+  if (e.key === 'Escape' && isSearchOpen) {
+    e.preventDefault();
+    closeSearch();
+    return;
+  }
+
   const mod = e.ctrlKey || e.metaKey;
   if (!mod || e.repeat || e.altKey) return;
   const key = e.key.toLowerCase();
+
+  // Ctrl/Cmd + K: open / focus the notes search.
+  if (key === 'k') {
+    e.preventDefault();
+    focusSearch();
+    return;
+  }
 
   // Ctrl/Cmd + Shift + L: New note. (Ctrl/Cmd+N is reserved by the browser for
   // New Window and fires unreliably, so we keep the new-note shortcut off it.)
