@@ -11,9 +11,8 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://tabmargin.com">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap">
+  <!-- Self-hosted font (no third-party requests — matches the privacy story). -->
+  <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -55,6 +54,12 @@
       </div>
     </header>
 
+    <section class="shot" aria-label="Screenshot of the Tabmargin editor">
+      <div class="shot-frame">
+        <img src="app-editor.png" alt="The Tabmargin editor: a notes sidebar beside a clean writing canvas on warm paper" width="1280" height="800" loading="lazy">
+      </div>
+    </section>
+
     <section class="features">
       <div class="feature">
         <h3>Distraction-free</h3>
@@ -75,8 +80,6 @@
       <span>
         <a href="https://app.tabmargin.com/?login=1">Open the app</a>
         &nbsp;·&nbsp;
-        <!-- TODO(before launch): set the real AMO listing slug. The add-on is published
-             under gecko id notetab@example.com; confirm the public addons.mozilla.org URL. -->
         <a href="https://addons.mozilla.org/firefox/addon/tabmargin/">Firefox add-on</a>
       </span>
     </footer>

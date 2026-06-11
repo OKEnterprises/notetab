@@ -1,8 +1,8 @@
 # Cloudflare Pages headers for app.tabmargin.com.
-# All scripts/styles are same-origin files (no inline), so script-src 'self'.
-# connect-src must allow the sync API and Supabase auth (called directly by
-# api.js). img-src needs data: for the paper-grain SVG in styles.css.
+# All scripts/styles/fonts are same-origin files (fonts are self-hosted, no
+# Google Fonts). connect-src must allow the sync API and Supabase auth (called
+# directly by api.js). img-src needs data: for the paper-grain SVG in styles.css.
 /*
-  Content-Security-Policy: default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; font-src https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com; script-src 'self'; connect-src https://api.tabmargin.com https://lktbfmoaodwmkdywkmfs.supabase.co
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.tabmargin.com https://lktbfmoaodwmkdywkmfs.supabase.co
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer

@@ -16,8 +16,10 @@ mkdir -p "$DIST"
 # Shared logic — canonical copies live in ../extension (also where api/src/sync.test.ts imports from)
 cp ../extension/sync.js ../extension/api.js ../extension/script.js ../extension/popup.js "$DIST"/
 
-# Shared styles
-cp ../extension/tokens.css ../extension/styles.css ../extension/popup.css "$DIST"/
+# Shared styles + the self-hosted font (Manrope, from the extension)
+cp ../extension/tokens.css ../extension/styles.css ../extension/popup.css ../extension/fonts.css "$DIST"/
+mkdir -p "$DIST"/fonts
+cp ../extension/fonts/*.woff2 "$DIST"/fonts/
 
 # Web-specific overlays (these win over any same-named file copied above)
 cp storage.js app.js web.css index.html _headers "$DIST"/

@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { mergeRemoteNotes } = require('../../extension/sync.js')
+const { mergeRemoteNotes, mergeLocalSnapshot } = require('../../extension/sync.js')
 
 function fallbackNote() {
   return {
@@ -145,5 +145,113 @@ describe('sync merge helper', () => {
 
     expect(result.notes).toEqual([fallbackNote()])
     expect(result.currentNoteId).toBe('fresh')
+  })
+})
+
+// Cross-tab adoption: another tab persisted a full snapshot; reconcile it with
+// this tab's in-memory state (see script.js adoptExternalSnapshot).
+describe('local snapshot merge helper', () => {
+  function note(id: string, updatedAt: string, content = `body of ${id}`) {
+    return {
+      id,
+      title: `title of ${id}`,
+      content,
+      createdAt: '2026-06-01T00:00:00.000Z',
+      updatedAt,
+    }
+  }
+
+  const baseArgs = {
+    currentNoteId: 'a',
+    snapshotCurrentNoteId: 'a',
+    dirtyNoteIds: [],
+    snapshotDirtyNoteIds: [],
+    pendingDeleteIds: [],
+    snapshotPendingDeleteIds: [],
+    createFallbackNote: fallbackNote,
+  }
+
+  it('adopts the snapshot copy when it is newer than the local one', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:00:00.000Z', 'stale')],
+      snapshotNotes: [note('a', '2026-06-01T00:05:00.000Z', 'fresh')],
+    })
+
+    expect(result.notes[0].content).toBe('fresh')
+    expect(result.changed).toBe(false)
+  })
+
+  it('keeps the local copy when it is strictly newer (in-flight typing)', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:10:00.000Z', 'mine, newer')],
+      snapshotNotes: [note('a', '2026-06-01T00:05:00.000Z', 'theirs')],
+    })
+
+    expect(result.notes[0].content).toBe('mine, newer')
+    expect(result.changed).toBe(true)
+  })
+
+  it('adopts notes the other tab created and drops clean notes it deleted', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:00:00.000Z'), note('gone', '2026-06-01T00:00:00.000Z')],
+      snapshotNotes: [note('a', '2026-06-01T00:00:00.000Z'), note('new', '2026-06-01T00:06:00.000Z')],
+      snapshotPendingDeleteIds: ['gone'],
+    })
+
+    expect(result.notes.map((n: { id: string }) => n.id).sort()).toEqual(['a', 'new'])
+  })
+
+  it('resurrects a locally-dirty note missing from the snapshot (creation race)', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:00:00.000Z'), note('draft', '2026-06-01T00:07:00.000Z')],
+      snapshotNotes: [note('a', '2026-06-01T00:00:00.000Z')],
+      dirtyNoteIds: ['draft'],
+    })
+
+    expect(result.notes.map((n: { id: string }) => n.id)).toEqual(['draft', 'a'])
+    expect(result.changed).toBe(true)
+  })
+
+  it('lets an explicit local delete win over the snapshot still carrying the note', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:00:00.000Z')],
+      snapshotNotes: [note('a', '2026-06-01T00:00:00.000Z'), note('deleted-here', '2026-06-01T00:09:00.000Z')],
+      pendingDeleteIds: ['deleted-here'],
+    })
+
+    expect(result.notes.map((n: { id: string }) => n.id)).toEqual(['a'])
+    expect(result.changed).toBe(true)
+    expect(result.pendingDeleteIds).toContain('deleted-here')
+  })
+
+  it('falls back to the snapshot current note when the local one disappeared', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      currentNoteId: 'gone',
+      snapshotCurrentNoteId: 'b',
+      localNotes: [note('gone', '2026-06-01T00:00:00.000Z')],
+      snapshotNotes: [note('b', '2026-06-01T00:01:00.000Z')],
+      snapshotPendingDeleteIds: ['gone'],
+    })
+
+    expect(result.currentNoteId).toBe('b')
+  })
+
+  it('creates a fallback note when everything was deleted', () => {
+    const result = mergeLocalSnapshot({
+      ...baseArgs,
+      localNotes: [note('a', '2026-06-01T00:00:00.000Z')],
+      snapshotNotes: [],
+      snapshotPendingDeleteIds: ['a'],
+    })
+
+    expect(result.notes).toEqual([fallbackNote()])
+    expect(result.currentNoteId).toBe('fresh')
+    expect(result.dirtyNoteIds).toContain('fresh')
   })
 })

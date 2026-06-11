@@ -14,7 +14,10 @@
 }
 
 html, body {
+  /* dvh tracks mobile browser chrome (iOS Safari's collapsing toolbars);
+     vh is the fallback for engines without it. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -47,6 +50,7 @@ body::before {
 .container {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   animation: settle 0.6s var(--ease);
 }
@@ -408,6 +412,20 @@ button {
 .btn-icon-action.confirming .confirm-label { display: inline; }
 
 /* ----- Scrollbar ----- */
+/* Same treatment in both engines: a thin gutter, thumb visible only while
+   hovering the scroller. The scrollbar-* properties are what Firefox (the
+   primary surface) actually honors; the ::-webkit-* rules cover Chrome/Safari
+   on the web app. */
+.notes-list,
+.editor {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.notes-list:hover,
+.editor:hover {
+  scrollbar-color: var(--ink-tertiary) transparent;
+}
+
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -416,7 +434,8 @@ button {
   border: 3px solid transparent;
   background-clip: padding-box;
 }
-.notes-list:hover::-webkit-scrollbar-thumb {
+.notes-list:hover::-webkit-scrollbar-thumb,
+.editor:hover::-webkit-scrollbar-thumb {
   background: var(--ink-tertiary);
   background-clip: padding-box;
 }
@@ -455,4 +474,27 @@ button {
   .sidebar { width: 240px; }
 
   .note-title { font-size: 24px; }
+}
+
+/* Phones: the sidebar becomes an overlay instead of squeezing the editor.
+   script.js starts it hidden at this width and closes it after picking a
+   note; the toggle goes fixed and above it so it stays reachable. */
+@media (max-width: 640px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 85vw);
+    z-index: 15;
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .toggle-sidebar {
+    position: fixed;
+    z-index: 16;
+  }
+
+  /* Clear the fixed toggle so "Notes" + the new-note button sit beside it. */
+  .sidebar-header { padding-left: 68px; }
 }

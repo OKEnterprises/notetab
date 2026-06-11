@@ -79,19 +79,29 @@
     await TabMarginStorage.remove('auth');
   }
 
-  async function refreshSession() {
-    const session = await getSession();
-    if (!session?.refresh_token) return null;
-    try {
-      const data = await supabaseAuth('/token?grant_type=refresh_token', {
-        refresh_token: session.refresh_token,
-      });
-      await storeSession(data);
-      return data;
-    } catch {
-      await TabMarginStorage.remove('auth');
-      return null;
+  // Single-flight: Supabase rotates refresh tokens, so two concurrent requests
+  // both spending the same token risk tripping reuse detection (which revokes
+  // the whole session family). All concurrent callers share one refresh.
+  let refreshInFlight = null;
+
+  function refreshSession() {
+    if (!refreshInFlight) {
+      refreshInFlight = (async () => {
+        const session = await getSession();
+        if (!session?.refresh_token) return null;
+        try {
+          const data = await supabaseAuth('/token?grant_type=refresh_token', {
+            refresh_token: session.refresh_token,
+          });
+          await storeSession(data);
+          return data;
+        } catch {
+          await TabMarginStorage.remove('auth');
+          return null;
+        }
+      })().finally(() => { refreshInFlight = null; });
     }
+    return refreshInFlight;
   }
 
   // Refresh slightly before the stored expiry so we don't spend a guaranteed

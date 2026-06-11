@@ -1,23 +1,46 @@
 /* ============================================================
    Tabmargin — design tokens (single source of truth)
-   Linked from both newtab.html and popup.html, before their
-   component stylesheets.
+   Linked from every page (newtab, popup, web app, aux pages),
+   before the component stylesheets.
+
+   Each color is defined once via light-dark(); the active scheme
+   is driven by color-scheme, which the data-theme attribute set
+   by script.js/popup.js overrides ("system" or unset follows the
+   OS). Baseline: Firefox 120 / Chrome 123 / Safari 17.5. Plain
+   light values precede each light-dark() as a fallback so older
+   browsers (e.g. iPadOS < 17.5) degrade to the light theme.
    ============================================================ */
 
 :root {
-  /* Light — warm paper */
+  color-scheme: light dark;
+
   --bg-canvas: #f7f3ec;
+  --bg-canvas: light-dark(#f7f3ec, #1a1612);
   --bg-recessed: #efeae0;
+  --bg-recessed: light-dark(#efeae0, #141008);
   --bg-elevated: #fcf9f3;
+  --bg-elevated: light-dark(#fcf9f3, #221d17);
   --ink-primary: #2a2520;
+  --ink-primary: light-dark(#2a2520, #ebe2d4);
   --ink-secondary: #6f6055;
+  --ink-secondary: light-dark(#6f6055, #8a7e72);
   --ink-tertiary: #9d9181;
+  --ink-tertiary: light-dark(#9d9181, #5a5048);
   --accent: #a35f47;
+  --accent: light-dark(#a35f47, #d99373);
   --accent-hover: #8b4d37;
+  --accent-hover: light-dark(#8b4d37, #c98365);
   --accent-soft: #e8d5cc;
+  --accent-soft: light-dark(#e8d5cc, #3a2820);
   --on-accent: #fff7ef;
+  --on-accent: light-dark(#fff7ef, #2a1f18);
   --danger: #9e4a3c;
+  --danger: light-dark(#9e4a3c, #d98b7d);
   --danger-soft: #ecd9d3;
+  --danger-soft: light-dark(#ecd9d3, #3a221d);
+
+  /* Grain tokens are not colors, so light-dark() can't express them;
+     dark values come from the overrides below. */
   --grain-opacity: 0.035;
   --grain-blend: multiply;
 
@@ -28,55 +51,46 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Forced themes pin the scheme; "system" (or unset) keeps `light dark` above. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* Dark values for the non-color grain tokens. */
+:root[data-theme="dark"] {
+  --grain-opacity: 0.05;
+  --grain-blend: screen;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-canvas: #1a1612;
-    --bg-recessed: #141008;
-    --bg-elevated: #221d17;
-    --ink-primary: #ebe2d4;
-    --ink-secondary: #8a7e72;
-    --ink-tertiary: #5a5048;
-    --accent: #d99373;
-    --accent-hover: #c98365;
-    --accent-soft: #3a2820;
-    --on-accent: #2a1f18;
-    --danger: #d98b7d;
-    --danger-soft: #3a221d;
     --grain-opacity: 0.05;
     --grain-blend: screen;
   }
 }
 
-:root[data-theme="dark"] {
-  --bg-canvas: #1a1612;
-  --bg-recessed: #141008;
-  --bg-elevated: #221d17;
-  --ink-primary: #ebe2d4;
-  --ink-secondary: #8a7e72;
-  --ink-tertiary: #5a5048;
-  --accent: #d99373;
-  --accent-hover: #c98365;
-  --accent-soft: #3a2820;
-  --on-accent: #2a1f18;
-  --danger: #d98b7d;
-  --danger-soft: #3a221d;
-  --grain-opacity: 0.05;
-  --grain-blend: screen;
+/* ----- Shared utilities ----- */
+
+/* Visually-hidden (screen-reader-only) text, e.g. the auth form labels. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-:root[data-theme="light"] {
-  --bg-canvas: #f7f3ec;
-  --bg-recessed: #efeae0;
-  --bg-elevated: #fcf9f3;
-  --ink-primary: #2a2520;
-  --ink-secondary: #6f6055;
-  --ink-tertiary: #9d9181;
-  --accent: #a35f47;
-  --accent-hover: #8b4d37;
-  --accent-soft: #e8d5cc;
-  --on-accent: #fff7ef;
-  --danger: #9e4a3c;
-  --danger-soft: #ecd9d3;
-  --grain-opacity: 0.035;
-  --grain-blend: multiply;
+/* Reduced motion: collapse the decorative animations and transitions
+   (settle, pulse, slide-over). Lives here so every page gets it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

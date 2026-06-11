@@ -40,12 +40,32 @@ export function billingRoutes() {
       .maybeSingle()
 
     let customerId = existingSub?.stripe_customer_id
+
+    // No subscription yet — reuse the customer from a previous checkout attempt
+    // (billing_customers, service-role-only table) instead of minting an orphan
+    // Stripe customer per click.
+    const sbAdmin = serviceClient(c.env)
+    if (!customerId) {
+      const { data: existing } = await sbAdmin
+        .from('billing_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle()
+      customerId = existing?.stripe_customer_id
+    }
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: userData.user.email,
         metadata: { supabase_user_id: userData.user.id },
       })
       customerId = customer.id
+      // Best-effort: a failed write only means the next click mints one more
+      // customer, which is the pre-existing behavior.
+      const { error: bcErr } = await sbAdmin
+        .from('billing_customers')
+        .upsert({ user_id: userData.user.id, stripe_customer_id: customerId }, { onConflict: 'user_id' })
+      if (bcErr) console.error('billing_customers upsert error:', bcErr)
     }
 
     const session = await stripe.checkout.sessions.create({
